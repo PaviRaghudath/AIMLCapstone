@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sales RAG Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f2f5;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: #1a202c;
+      color: white;
+      padding: 1rem 2rem;
+      font-size: 1.5rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+
+    main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    #dashboard {
+      flex: 3;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+      overflow-y: hidden;
+      max-height: 100vh;
+    }
+    #dashboard h1 {
+    text-align: center;
+    font-size: 26px;
+    margin-bottom: 20px;
+  }
+
+    #chatbot {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid #e2e8f0;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    #tiles {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .tile {
+      flex: 1;
+      background-color: #2b6cb0;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .tile:hover {
+      background-color: #2c5282;
+    }
+
+.chart-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.chart {
+  flex: 1 1 300px;
+  max-width: calc(50% - 10px);
+  min-width: 280px;
+  background: #f9f9f9;
+  padding: 10px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  height: 400px; 
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+
+  .chart h2 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  header {
+    font-size: 22px;
+    font-weight: bold;
+    padding: 20px;
+    background-color: #004c97;
+    color: white;
+    text-align: center;
+  }
+
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      background: #f9fafb;
+      margin-bottom: 1rem;
+      border: 1px solid #e2e8f0;
+      padding: 0.5rem;
+    }
+
+    .message {
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 4px;
+    }
+
+    .user {
+      background-color: #ebf8ff;
+      color: #2b6cb0;
+    }
+
+    .bot {
+      background-color: #f0fff4;
+      color: #2f855a;
+    }
+
+    #chat-input {
+      display: flex;
+    }
+
+    #chat-input input {
+      flex: 1;
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+
+    #chat-input button {
+      padding: 0.5rem;
+      background-color: #2b6cb0;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+   /* #chatbot {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  } */
+  </style>
+</head>
+
+<body>
+  <header>Sales RAG Dashboard</header>
+  <main>
+    
+  <div id="dashboard">
+    <!-- <h1>Sales Dashboard</h1> -->
+
+    <div class="chart-row">
+      <div class="chart">
+        <h2>Total Sales by Store</h2>
+        {{ total_sales_chart | safe }}
+      </div>
+
+      <div class="chart">
+        <h2>Quarterly Sales Comparison</h2>
+        {{ quarterly_sales_chart | safe }}
+      </div>
+
+
+    </div>
+
+     <div class="chart-row">
+      <!-- <div class="chart">
+        <h2>Monthly Sales Comparison</h2>
+        {{ mon_sales | safe }}
+      </div> -->
+
+      <div class="chart">
+        <h2>Average Sales by Product Family</h2>
+        {{ family_sales_chart | safe }}
+      </div>
+      <!-- <div class="chart">
+        <h2>Sales Distribution by Holiday Promotion</h2>
+        {{ holi_promo_sales | safe }}
+      </div> -->
+
+      <div class="chart">
+        <h2>Total Sales by State</h2>
+        {{ sta_sales | safe }}
+      </div>
+    </div>
+  </div>
+
+    <div id="chatbot">
+      <h3>Sales Assistant</h3>
+      <div id="messages"></div>
+      <div id="chat-input">
+        <input type="text" id="chat-text" placeholder="Ask a question..." />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let chartTotal, chartStore, chartFamily;
+
+    
+
+    async function sendMessage() {
+      const input = document.getElementById('chat-text');
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      addMessage('user', msg);
+      input.value = '';
+
+      const res = await fetch('/rag/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: msg })
+      });
+
+      const { answer } = await res.json();
+      addMessage('bot', answer);
+    }
+
+    function addMessage(sender, text) {
+      const div = document.createElement('div');
+      div.className = `message ${sender}`;
+      div.textContent = text;
+      document.getElementById('messages').appendChild(div);
+    }
+
+    // window.onload = () => loadSalesView('monthly');
+  </script>
+</body>
+
+</html>
